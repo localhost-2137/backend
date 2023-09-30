@@ -1,5 +1,5 @@
 use anyhow::Result;
-use utils::Univertsity;
+use utils::{Candidate, Univertsity};
 
 mod utils;
 
@@ -27,8 +27,8 @@ async fn main() -> Result<()> {
             continue;
         }
 
-        let addr = utils::get_place_addr(&api_key, university.clone()).await;
-        println!("{:?}", addr);
+        println!("Parsing: {}...", university.name);
+        let addr = utils::get_place_addr(&api_key, &university).await;
 
         let subjects: Vec<&str> = university.subjects_offered.split(",").collect();
         for subject in subjects {
@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
             all_subjects.push(subject);
         }
 
-        tmp_output += &generate_insert_query(university).await?;
+        tmp_output += &generate_insert_query(addr, &university).await?;
     }
 
     tokio::fs::write("./output.sql", tmp_output).await?;
@@ -49,6 +49,21 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn generate_insert_query(university: Univertsity) -> Result<String> {
-    Ok(format!("INSERT INTO universities({}); \n", university.name))
+async fn generate_insert_query(
+    maps_resp: Option<Candidate>,
+    university: &Univertsity,
+) -> Result<String> {
+    let google_info = maps_resp.ok_or_else(|| anyhow::anyhow!("Address not found!"))?;
+
+    Ok(format!(
+        "INSERT INTO univeristies(name, url, lng, lat, address, number_students, subjects) VALUES ('{}', '{}', {}, {}, '{}', {}, '{}'); \n",
+        //university.rank,
+        google_info.name,
+        university.url,
+        google_info.geometry.location.lng,
+        google_info.geometry.location.lat,
+        google_info.formatted_address,
+        university.stats_number_students.replace(",", ""),
+        university.subjects_offered
+    ))
 }
