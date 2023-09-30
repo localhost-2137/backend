@@ -5,6 +5,17 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let api_key = std::env::args().nth(1);
+    if api_key.is_none() {
+        println!(
+            "Usage: {} <google_places_api_key>",
+            std::env::args().nth(0).unwrap_or("./binary".to_string())
+        );
+
+        return Ok(());
+    }
+    let api_key = api_key.expect("Shouldnt fail");
+
     let data = tokio::fs::read_to_string("./data.json").await?;
     let universities: Vec<Univertsity> = serde_json::from_str(&data)?;
 
@@ -16,11 +27,7 @@ async fn main() -> Result<()> {
             continue;
         }
 
-        let addr = utils::get_place_addr(
-            "AIzaSyDMqb-6S20ryR7NcSQDleb5voFJR2ZUCIc",
-            university.clone(),
-        )
-        .await;
+        let addr = utils::get_place_addr(&api_key, university.clone()).await;
         println!("{:?}", addr);
 
         let subjects: Vec<&str> = university.subjects_offered.split(",").collect();
