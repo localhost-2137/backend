@@ -1,32 +1,29 @@
 use axum::extract::State;
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, FromRow};
 use serde_json::{json, Value};
+use sqlx::{FromRow, PgPool};
 
-#[derive(FromRow)]
-struct University {
-    id: u32,
-    rank: Option<u32>,
-    name: String,
-    url: String,
-    lng: f32,
-    lat: f32,
-    address: String,
-    number_students: u32,
-    subjects: String,
+#[derive(Debug, FromRow, Serialize, Deserialize)]
+pub struct University {
+    pub id: i32,
+    pub rank: i32,
+    pub name: String,
+    pub academic: bool,
+    pub url: String,
+    pub lng: f64,
+    pub lat: f64,
+    pub address: String,
+    pub city: String,
+    pub number_students: i32,
+    pub subjects: String,
 }
 
-pub async fn get_all_universities(
-    State(pool): State<PgPool>
-) -> Json<Value> {
-    let all_universities = sqlx::query!(
-        "SELECT name FROM universities;"
-    )
+pub async fn get_all_universities(State(pool): State<PgPool>) -> Json<Value> {
+    let all_universities = sqlx::query_as!(University, "SELECT * FROM universities;")
         .fetch_all(&pool)
-        .await.unwrap();
-    println!("{:?}", all_universities);
-    Json(
-        json!(vec![""])
-    )
+        .await
+        .unwrap();
+
+    Json(json!(all_universities))
 }
