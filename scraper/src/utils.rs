@@ -1,5 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+pub async fn get_place_addr(api: &str, university: Univertsity) -> Option<Candidate> {
+    let url = format!("https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={}&inputtype=textquery&fields=formatted_address,name&key={}", university.name, api);
+    let resp = reqwest::get(url).await;
+    if let Ok(resp) = resp {
+        let json_res = resp.json::<GoogleMapsResp>().await;
+        if let Ok(json) = json_res {
+            return json.candidates.first().cloned();
+        }
+    }
+
+    None
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Univertsity {
@@ -63,4 +76,19 @@ pub struct Univertsity {
 pub struct CtaButton {
     pub link: String,
     pub text: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleMapsResp {
+    pub candidates: Vec<Candidate>,
+    pub status: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Candidate {
+    #[serde(rename = "formatted_address")]
+    pub formatted_address: String,
+    pub name: String,
 }
