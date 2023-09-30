@@ -45,6 +45,16 @@ pub async fn get_all_cities(State(pool): State<PgPool>) -> Json<Value> {
     Json(json!(all_cities))
 }
 
+pub async fn get_all_subjects(State(pool): State<PgPool>) -> Json<Value> {
+    let all_subjects: Vec<String> =
+        sqlx::query_scalar!("SELECT subject FROM universities_subjects GROUP BY subject")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    Json(json!(all_subjects))
+}
+
 pub async fn search(query: Query<SearchQuery>) -> Json<Value> {
     println!("{:#?}", query);
 
