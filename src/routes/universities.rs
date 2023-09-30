@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::Json;
 use serde_json::{json, Value};
 use sqlx::{FromRow, PgPool};
@@ -19,6 +19,13 @@ pub struct University {
     pub subjects: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SearchQuery {
+    pub cities: Vec<String>,
+    pub studies: Vec<String>,
+    pub academic: bool,
+}
+
 pub async fn get_all_universities(State(pool): State<PgPool>) -> Json<Value> {
     let all_universities = sqlx::query_as!(University, "SELECT * FROM universities;")
         .fetch_all(&pool)
@@ -26,4 +33,20 @@ pub async fn get_all_universities(State(pool): State<PgPool>) -> Json<Value> {
         .unwrap();
 
     Json(json!(all_universities))
+}
+
+pub async fn get_all_cities(State(pool): State<PgPool>) -> Json<Value> {
+    let all_cities: Vec<String> =
+        sqlx::query_scalar!("SELECT city FROM universities GROUP BY city")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    Json(json!(all_cities))
+}
+
+pub async fn search(query: Query<SearchQuery>) -> Json<Value> {
+    println!("{:#?}", query);
+
+    Json(json!(vec![""]))
 }

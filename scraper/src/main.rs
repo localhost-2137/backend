@@ -64,7 +64,11 @@ async fn generate_insert_query(
         .split(" ")
         .into_iter()
         .collect::<Vec<&str>>();
-    city_splitted.remove(1);
+
+    city_splitted.remove(0);
+    if city_splitted.len() > 1 {
+        city_splitted.remove(0);
+    }
     let city = city_splitted.join(" ");
     let city = city.trim();
 
