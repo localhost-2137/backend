@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  postgres:
+    build: ./docker/postgres/
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=school_finder
+      - POSTGRES_PASSWORD=test
+
+  
