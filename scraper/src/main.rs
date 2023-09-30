@@ -21,9 +21,9 @@ async fn main() -> Result<()> {
     let data = tokio::fs::read_to_string("./data.json").await?;
     let universities: Vec<Univertsity> = serde_json::from_str(&data)?;
 
-    let mut all_subjects: Vec<String> = Vec::new();
-
     let mut tmp_output = String::new();
+
+    let mut i = 0;
     for university in universities {
         if university.location != "Poland" {
             continue;
@@ -31,27 +31,23 @@ async fn main() -> Result<()> {
 
         println!("Parsing: {}...", university.name);
         let addr = utils::get_place_addr(&api_key, &university, &client).await;
+        tmp_output += &generate_insert_query(i, addr, &university).await?;
 
         let subjects: Vec<&str> = university.subjects_offered.split(",").collect();
         for subject in subjects {
-            let subject = subject.trim().to_string();
-
-            if all_subjects.contains(&subject) || subject.is_empty() {
-                continue;
-            }
-
-            all_subjects.push(subject);
+            let subject = subject.trim();
+            tmp_output += &generate_insert_subject(i, subject).await?;
         }
 
-        tmp_output += &generate_insert_query(addr, &university).await?;
+        i += 1;
     }
 
     tokio::fs::write("./output.sql", tmp_output).await?;
-    println!("{:#?}", all_subjects);
     Ok(())
 }
 
 async fn generate_insert_query(
+    id: u32,
     maps_resp: Option<Candidate>,
     university: &Univertsity,
 ) -> Result<String> {
@@ -73,7 +69,8 @@ async fn generate_insert_query(
     let city = city.trim();
 
     Ok(format!(
-        "INSERT INTO universities(rank, name, academic, url, lng, lat, address, city, number_students, subjects) VALUES ({}, '{}', {}, '{}', {}, {}, '{}', '{}', {}, '{}'); \n",
+        "INSERT INTO universities(id, rank, name, academic, url, lng, lat, address, city, number_students) VALUES ({}, {}, '{}', {}, '{}', {}, {}, '{}', '{}', {}); \n",
+        id,
         university.rank.parse::<u32>().unwrap_or(rand::thread_rng().gen_range(600..1000)),
         google_info.name,
         rand::thread_rng().gen_bool(0.6),
@@ -82,7 +79,13 @@ async fn generate_insert_query(
         google_info.geometry.location.lat,
         google_info.formatted_address,
         city,
-        university.stats_number_students.replace(",", ""),
-        university.subjects_offered
+        university.stats_number_students.replace(",", "")
+    ))
+}
+
+async fn generate_insert_subject(id: u32, subject: &str) -> Result<String> {
+    Ok(format!(
+        "INSERT INTO universities_subjects(u_id, subject) VALUES ({}, '{}'); \n",
+        id, subject
     ))
 }
