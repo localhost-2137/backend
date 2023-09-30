@@ -1,11 +1,15 @@
 mod routes;
 mod pg_pool;
+mod g_maps;
 
+use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use crate::routes::router;
 
 #[tokio::main]
 async fn main() {
+    dotenv().unwrap();
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect("postgres://postgres:test@localhost/school_finder")

@@ -3,6 +3,8 @@ use axum::routing::get;
 use sqlx::PgPool;
 
 mod all_universities;
+mod distance;
+
 use all_universities::get_all_universities;
 
 pub fn router(pool: PgPool) -> Router {

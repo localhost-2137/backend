@@ -1,8 +1,8 @@
 use axum::extract::State;
 use axum::Json;
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{FromRow, PgPool};
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct University {
