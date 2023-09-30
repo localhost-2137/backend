@@ -1,0 +1,21 @@
+CREATE TABLE univeristies (
+    rank int,
+    name varchar(200),
+    scores_overall float,
+    scores_overall_rank int,
+    scores_teaching float,
+    scores_teaching_rank int,
+    scores_research float,
+    scores_research_rank int,
+    scores_industry_income float,
+    scores_industry_income_rank int,
+    scores_international_outlook float,
+    member_level int,
+    url text,
+    lot float,
+    lat float,
+    stats_number_students int,
+    stats_female_male_ratio varchar(15),
+    subjects_offered text,
+    apply_link text
+);
