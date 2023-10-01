@@ -25,6 +25,13 @@ pub struct SearchQuery {
     pub subjects: String,
 }
 
+#[derive(FromRow, Serialize)]
+pub struct UniversityLocation {
+    pub name: String,
+    pub lng: f64,
+    pub lat: f64,
+}
+
 pub async fn get_university(Path(u_id): Path<i32>, State(pool): State<PgPool>) -> Json<Value> {
     let university: University = sqlx::query_as("SELECT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities WHERE universities.id = $1")
         .bind(u_id)
@@ -95,5 +102,16 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
             .unwrap();
     res.dedup_by_key(|k| k.id);
 
+    Json(json!(res))
+}
+
+pub async fn all_universities_locations(State(pool): State<PgPool>) -> Json<Value> {
+    let res: Vec<UniversityLocation> = sqlx::query_as(
+        "SELECT name, lng, lat FROM universities"
+    )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    
     Json(json!(res))
 }

@@ -6,6 +6,7 @@ use lazy_static::lazy_static;
 use sqlx::PgPool;
 use std::env;
 use tower_http::cors::{Any, CorsLayer};
+use crate::routes::universities::all_universities_locations;
 
 mod ai;
 mod distance;
@@ -28,6 +29,7 @@ pub fn router(pool: PgPool) -> Router {
         .route("/search", get(search))
         .route("/ai", post(ai))
         .route("/university/:u_id", get(get_university))
+        .route("/universities/location", get(all_universities_locations))
         .layer(cors)
         .with_state(pool)
 }
