@@ -105,10 +105,7 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
     model_msg = model_msg.replace("{UNIS}", &tmp_unis);
     let ai_res = get_ai_res(&model_msg).await;
     let ids = if let Ok(ai_res) = ai_res {
-        ai_res
-            .split(',')
-            .map(|x| x.parse::<i32>().expect("ERROR"))
-            .collect::<Vec<i32>>()
+        parse_openai_resp(&ai_res).unwrap_or(unis.iter().map(|x| x.id).collect::<Vec<i32>>())
     } else {
         unis.iter().map(|x| x.id).collect::<Vec<i32>>()
     };
@@ -123,6 +120,22 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
     }
 
     Json(json!(output))
+}
+
+fn parse_openai_resp(resp: &str) -> Result<Vec<i32>> {
+    let splitted = resp.split(",");
+    let mut resp: Vec<i32> = Vec::new();
+
+    for s in splitted {
+        let s = s.trim();
+        if s.len() == 0 {
+            continue;
+        }
+
+        resp.push(s.parse::<i32>()?);
+    }
+
+    Ok(resp)
 }
 
 async fn get_ai_res(input: &str) -> Result<String> {

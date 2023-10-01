@@ -1,12 +1,12 @@
 use self::ai::ai;
 use self::universities::{get_all_cities, get_all_subjects, get_university, search};
+use crate::routes::universities::all_universities_locations;
 use axum::routing::{get, post};
 use axum::Router;
 use lazy_static::lazy_static;
 use sqlx::PgPool;
 use std::env;
 use tower_http::cors::{Any, CorsLayer};
-use crate::routes::universities::all_universities_locations;
 
 mod ai;
 mod distance;
