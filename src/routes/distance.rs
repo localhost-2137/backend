@@ -48,6 +48,10 @@ pub async fn distance(location_query: LocationQuery) -> Result<(u32, u32)> {
     let result = result.text().await.unwrap().to_string();
     let result: RootResponse = serde_json::from_str(&result).unwrap();
 
+    if result.routes.len() == 0 {
+        return Ok((0, 0));
+    }
+
     let leg = &result.routes[0].legs[0];
     Ok((leg.distance.value, leg.duration.value))
 }

@@ -25,6 +25,7 @@ pub struct AIUni {
     pub id: i32,
     pub rank: i32,
     pub name: String,
+    pub dst: f64,
     pub lng: f64,
     pub lat: f64,
     pub subjects: Vec<String>,
@@ -54,8 +55,8 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
         tmp_questions += &format!("{}: {}\n", q[0], q[1]);
     }
     model_msg = model_msg.replace("{PREF}", &tmp_questions);
-    let unis: Vec<AIUni> = sqlx::query_as("SELECT id, rank, name, lng, lat, array((SELECT subject FROM universities_subjects WHERE universities_subjects.u_id = universities.id)) as subjects 
-        FROM universities ORDER BY ST_DistanceSphere(ST_MakePoint(lat, lng), ST_MakePoint($1, $2)) LIMIT $3")
+    let unis: Vec<AIUni> = sqlx::query_as("SELECT id, rank, name, ST_DistanceSphere(ST_MakePoint(lat, lng), ST_MakePoint($1, $2)) as dst, lng, lat, 
+        array((SELECT subject FROM universities_subjects WHERE universities_subjects.u_id = universities.id)) as subjects FROM universities ORDER BY dst ASC LIMIT $3")
         .bind(input.lat)
         .bind(input.lng)
         .bind(AI_LIMIT)
@@ -83,7 +84,7 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
             id: uni.id,
             rank: uni.rank,
             name: uni.name.clone(),
-            distance: gmaps.0.parse::<u32>().unwrap_or(0),
+            distance: gmaps.0.parse::<u32>().unwrap_or(uni.dst as u32),
             time: gmaps.1.parse::<u32>().unwrap_or(0),
             lng: uni.lng,
             lat: uni.lat,
