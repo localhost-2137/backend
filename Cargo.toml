@@ -16,3 +16,4 @@ lazy_static = "1.4.0"
 async-lazy = "0.1.0"
 reqwest = "0.11.20"
 tower-http = { version = "0.4.4", features = ["cors"] }
+openai = "1.0.0-alpha.13"

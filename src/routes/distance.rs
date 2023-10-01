@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use axum::extract::Query;
 use serde::Deserialize;
 
-use crate::g_maps::MAPS_API_KEY;
+use crate::routes::MAPS_API_KEY;
 
 #[derive(Deserialize)]
 pub struct LocationQuery {
@@ -55,10 +55,8 @@ pub async fn distance(location_query: Query<LocationQuery>) -> Json<Value> {
 
     let leg = &result.routes[0].legs[0];
 
-    Json(
-        json!({
-            "distance": leg.distance.value,
-            "duration": leg.duration.value,
-        })
-    )
+    Json(json!({
+        "distance": leg.distance.value,
+        "duration": leg.duration.value,
+    }))
 }
