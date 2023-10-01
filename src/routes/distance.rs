@@ -1,18 +1,15 @@
-use axum::Json;
+use anyhow::Result;
 use reqwest;
-use serde_json::{json, Value};
-
-use axum::extract::Query;
 use serde::Deserialize;
 
 use crate::routes::MAPS_API_KEY;
 
 #[derive(Deserialize)]
 pub struct LocationQuery {
-    fromLng: f32,
-    fromLat: f32,
-    toLng: f32,
-    toLat: f32,
+    pub fromLng: f64,
+    pub fromLat: f64,
+    pub toLng: f64,
+    pub toLat: f64,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +33,7 @@ struct MeasureResponse {
     value: u32,
 }
 
-pub async fn distance(location_query: Query<LocationQuery>) -> Json<Value> {
+pub async fn distance(location_query: LocationQuery) -> Result<(u32, u32)> {
     let from = (location_query.fromLat, location_query.fromLng);
     let to = (location_query.toLat, location_query.toLng);
 
@@ -46,17 +43,11 @@ pub async fn distance(location_query: Query<LocationQuery>) -> Json<Value> {
         from.0, from.1,
         to.0, to.1,
     ))
-        .await
-        .unwrap();
+        .await?;
 
     let result = result.text().await.unwrap().to_string();
-    println!("{}", result);
     let result: RootResponse = serde_json::from_str(&result).unwrap();
 
     let leg = &result.routes[0].legs[0];
-
-    Json(json!({
-        "distance": leg.distance.value,
-        "duration": leg.duration.value,
-    }))
+    Ok((leg.distance.value, leg.duration.value))
 }
