@@ -1,4 +1,4 @@
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -23,6 +23,16 @@ pub struct University {
 pub struct SearchQuery {
     pub cities: String,
     pub subjects: String,
+}
+
+pub async fn get_university(Path(u_id): Path<i32>, State(pool): State<PgPool>) -> Json<Value> {
+    let university: University = sqlx::query_as("SELECT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities WHERE universities.id = $1")
+        .bind(u_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    Json(json!(university))
 }
 
 pub async fn get_all_cities(State(pool): State<PgPool>) -> Json<Value> {
@@ -51,7 +61,7 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
             .fetch_all(&pool)
             .await
             .unwrap();
-        res.dedup();
+        res.dedup_by_key(|k| k.id);
 
         return Json(json!(res));
     } else if query.cities.is_empty() {
@@ -61,7 +71,7 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
             .fetch_all(&pool)
             .await
             .unwrap();
-        res.dedup();
+        res.dedup_by_key(|k| k.id);
 
         return Json(json!(res));
     } else if query.subjects.is_empty() {
@@ -71,7 +81,7 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
             .fetch_all(&pool)
             .await
             .unwrap();
-        res.dedup();
+        res.dedup_by_key(|k| k.id);
 
         return Json(json!(res));
     }
@@ -83,7 +93,7 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
             .fetch_all(&pool)
             .await
             .unwrap();
-    res.dedup();
+    res.dedup_by_key(|k| k.id);
 
     Json(json!(res))
 }
