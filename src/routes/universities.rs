@@ -22,17 +22,7 @@ pub struct University {
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {
     pub cities: String,
-    pub studies: String,
-    pub academic: bool,
-}
-
-pub async fn get_all_universities(State(pool): State<PgPool>) -> Json<Value> {
-    let all_universities = sqlx::query_as!(University, "SELECT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities;")
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-
-    Json(json!(all_universities))
+    pub subjects: String,
 }
 
 pub async fn get_all_cities(State(pool): State<PgPool>) -> Json<Value> {
@@ -55,8 +45,41 @@ pub async fn get_all_subjects(State(pool): State<PgPool>) -> Json<Value> {
     Json(json!(all_subjects))
 }
 
-pub async fn search(query: Query<SearchQuery>) -> Json<Value> {
-    println!("{:#?}", query);
+pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Json<Value> {
+    if query.cities.is_empty() && query.subjects.is_empty() {
+        let res: Vec<University> = sqlx::query_as("SELECT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities;")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
 
-    Json(json!(vec![""]))
+        return Json(json!(res));
+    } else if query.cities.is_empty() {
+        let res: Vec<University> = sqlx::query_as("SELECT DISTINCT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities 
+            INNER JOIN universities_subjects ON universities.id=universities_subjects.u_id WHERE universities_subjects.subject = ANY($1);")
+            .bind(query.subjects.split(',').collect::<Vec<&str>>())
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        return Json(json!(res));
+    } else if query.subjects.is_empty() {
+        let res: Vec<University> = sqlx::query_as("SELECT DISTINCT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities 
+            WHERE universities.city = ANY($1);")
+            .bind(query.cities.split(',').collect::<Vec<&str>>())
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        return Json(json!(res));
+    }
+
+    let res: Vec<University> = sqlx::query_as("SELECT DISTINCT *, array((SELECT subject FROM universities_subjects WHERE u_id = universities.id)) as subjects FROM universities 
+            INNER JOIN universities_subjects ON universities.id=universities_subjects.u_id WHERE universities_subjects.subject = ANY($1) AND universities.city = ANY($2);")
+            .bind(query.subjects.split(',').collect::<Vec<&str>>())
+            .bind(query.cities.split(',').collect::<Vec<&str>>())
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    Json(json!(res))
 }
