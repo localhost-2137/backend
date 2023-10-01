@@ -27,6 +27,7 @@ pub struct SearchQuery {
 
 #[derive(FromRow, Serialize)]
 pub struct UniversityLocation {
+    id: i32,
     pub name: String,
     pub lng: f64,
     pub lat: f64,
@@ -107,7 +108,7 @@ pub async fn search(query: Query<SearchQuery>, State(pool): State<PgPool>) -> Js
 
 pub async fn all_universities_locations(State(pool): State<PgPool>) -> Json<Value> {
     let res: Vec<UniversityLocation> = sqlx::query_as(
-        "SELECT name, lng, lat FROM universities"
+        "SELECT id, name, lng, lat FROM universities"
     )
         .fetch_all(&pool)
         .await
