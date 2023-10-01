@@ -7,7 +7,9 @@ use sqlx::PgPool;
 
 use crate::routes::distance::{distance, LocationQuery};
 
-const MODEL_MSG: &'static str = "Your task is to select the best university based on user inputs. You should also consider the subjects and distances to that universities. I will pre-selected set of schools in that format:\nID|GLOBAL_RANK|NAME|DISTANCE IN METERS|TIME OF TRAVEL IN SECONDS|SUBJECTS\nYou must return only id's of that universities in order from best to worse!\nUniversities to consider:\n{UNIS}\n\nUser preferences:\n{PREF}";
+use super::OPENAI_KEY;
+
+const MODEL_MSG: &'static str = "Your task is to select the best university based on user inputs. You should also consider the subjects and distances to that universities. I will pre-selected set of schools in that format:\nID|GLOBAL_RANK|NAME|DISTANCE IN METERS|TIME OF TRAVEL IN SECONDS|SUBJECTS\nYou must return only that universities in order from best to worse!\nUniversities to consider:\n{UNIS}\n\nUser preferences:\n{PREF}\n\nRETURN ONLY ID JOINED BY ','!!! YOU MUST RETURN ALL IDS!";
 const AI_LIMIT: i32 = 5;
 const OPENAI_MODEL: &'static str = "gpt-3.5-turbo";
 
@@ -18,11 +20,23 @@ pub struct AIInput {
     pub lng: f64,
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct AIUni {
     pub id: i32,
     pub rank: i32,
     pub name: String,
+    pub lng: f64,
+    pub lat: f64,
+    pub subjects: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct AIOut {
+    pub id: i32,
+    pub rank: i32,
+    pub name: String,
+    pub distance: u32,
+    pub time: u32,
     pub lng: f64,
     pub lat: f64,
     pub subjects: Vec<String>,
@@ -49,7 +63,8 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
         .await.unwrap();
 
     let mut tmp_unis = String::new();
-    for uni in unis {
+    let mut tmp_out_unis: Vec<AIOut> = Vec::new();
+    for uni in &unis {
         let gmaps = distance(LocationQuery {
             fromLng: input.lng,
             fromLat: input.lat,
@@ -57,11 +72,23 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
             toLat: uni.lat,
         })
         .await;
+
         let gmaps = if let Ok(gmaps) = gmaps {
             (gmaps.0.to_string(), gmaps.1.to_string())
         } else {
             ("NONE".to_string(), "NONE".to_string())
         };
+
+        tmp_out_unis.push(AIOut {
+            id: uni.id,
+            rank: uni.rank,
+            name: uni.name.clone(),
+            distance: gmaps.0.parse::<u32>().unwrap_or(0),
+            time: gmaps.1.parse::<u32>().unwrap_or(0),
+            lng: uni.lng,
+            lat: uni.lat,
+            subjects: uni.subjects.clone(),
+        });
 
         tmp_unis += &format!(
             "{}|{}|{}|{}|{}|{}\n",
@@ -75,12 +102,31 @@ pub async fn ai(State(pool): State<PgPool>, Json(input): Json<AIInput>) -> Json<
     }
 
     model_msg = model_msg.replace("{UNIS}", &tmp_unis);
-    println!("{}", model_msg);
+    let ai_res = get_ai_res(&model_msg).await;
+    let ids = if let Ok(ai_res) = ai_res {
+        ai_res
+            .split(',')
+            .map(|x| x.parse::<i32>().expect("ERROR"))
+            .collect::<Vec<i32>>()
+    } else {
+        unis.iter().map(|x| x.id).collect::<Vec<i32>>()
+    };
 
-    Json(json!(vec![""]))
+    let mut output: Vec<AIOut> = Vec::new();
+    for id in ids {
+        for uni in &tmp_out_unis {
+            if uni.id == id {
+                output.push(uni.clone());
+            }
+        }
+    }
+
+    Json(json!(output))
 }
 
 async fn get_ai_res(input: &str) -> Result<String> {
+    openai::set_key(OPENAI_KEY.to_string());
+
     let messages: Vec<ChatCompletionMessage> = vec![construct_system_msg(), construct_msg(&input)];
     let chat_completion = ChatCompletion::builder(OPENAI_MODEL, messages.clone())
         .create()
